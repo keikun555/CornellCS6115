@@ -1,3 +1,7 @@
+# vim swp files
+*.swp
+*.swo
+
 .*.aux
 .*.d
 *.a
