@@ -26,15 +26,39 @@ Infix "~=" := fun_equiv (at level 70, no associativity).
 
 (** To warm up, let's first prove that [fun_equiv] is an equivalence relation *)
 Lemma fun_equiv_refl : forall (A B : Type) (f : A -> B), f ~= f.
-Proof. Admitted.
+Proof.
+  intros.
+  unfold fun_equiv.
+  intros.
+  reflexivity.
+Qed.
 
 Lemma fun_equiv_symm : forall (A B : Type) (f g : A -> B),
     f ~= g -> g ~= f.
-Proof. Admitted.
+Proof.
+  intros.
+  unfold fun_equiv.
+  unfold fun_equiv in H.
+  intros.
+  specialize (H x).
+  rewrite H.
+  reflexivity.
+Qed.
 
 Lemma fun_equiv_trans : forall (A B : Type) (f g h : A -> B),
     f ~= h -> h ~= g -> f ~= g.
-Proof. Admitted.
+Proof. 
+  intros.
+  unfold fun_equiv.
+  unfold fun_equiv in H.
+  unfold fun_equiv in H0.
+  intros.
+  specialize (H x).
+  rewrite H.
+  specialize (H0 x).
+  rewrite H0.
+  reflexivity.
+Qed.
 
 (** Here is the definition of the identity function [id], which just returns
     its argument without modification: *)
@@ -54,6 +78,7 @@ Definition compose {A B C : Type} (g : B -> C) (f : A -> B) (x : A) : C :=
     
     Users of Emacs with company-coq can simply type \circ RET
     to insert ∘. *)
+Notation " g \circ f " := (compose g f) (at level 40, left associativity).
 Notation " g ∘ f " := (compose g f) (at level 40, left associativity).
 
 (** Here are three simple properties of function composition.
@@ -63,17 +88,34 @@ Notation " g ∘ f " := (compose g f) (at level 40, left associativity).
 Lemma compose_id_l : forall A B (f: A -> B),
     id ∘ f ~= f.
 Proof.
-Admitted.
+  intros.
+  unfold fun_equiv.
+  intros.
+  unfold id.
+  unfold compose.
+  reflexivity.
+Qed.
 
 Lemma compose_id_r : forall A B (f: A -> B),
     f ∘ id ~= f.
 Proof.
-Admitted.
+  intros.
+  unfold fun_equiv.
+  intros.
+  unfold compose.
+  unfold id.
+  reflexivity.
+Qed.
 
 Lemma compose_assoc : forall A B C D (f: A -> B) (g: B -> C) (h: C -> D),
     h ∘ (g ∘ f) ~= h ∘ g ∘ f.
 Proof.
-Admitted.
+  intros.
+  unfold fun_equiv.
+  intros.
+  unfold compose.
+  reflexivity.
+Qed.
 
 (** The selfCompose function takes a function and applies this function [n] times
     to the argument. There are different ways of defining it, but let's
@@ -94,14 +136,14 @@ Proof. reflexivity. Qed.
     saying "to raise [base] to the power [e], apply the function that multiplies
     its argument by [base] to [1] [e] times".
     Define [exp] using [selfCompose] and [Nat.mul]. *)
-Definition exp(base e: nat): nat. Admitted.
+Definition exp(base e: nat): nat := selfCompose (Nat.mul base) e 1.
 
 (** Once you define [exp], you can replace [Admitted.] below by [Proof. reflexivity. Qed.] *)
-Lemma test_exp_2_3: exp 2 3 = 8. Admitted.
-Lemma test_exp_3_2: exp 3 2 = 9. Admitted.
-Lemma test_exp_4_1: exp 4 1 = 4. Admitted.
-Lemma test_exp_5_0: exp 5 0 = 1. Admitted.
-Lemma test_exp_1_3: exp 1 3 = 1. Admitted.
+Lemma test_exp_2_3: exp 2 3 = 8. Proof. reflexivity. Qed.
+Lemma test_exp_3_2: exp 3 2 = 9. Proof. reflexivity. Qed.
+Lemma test_exp_4_1: exp 4 1 = 4. Proof. reflexivity. Qed.
+Lemma test_exp_5_0: exp 5 0 = 1. Proof. reflexivity. Qed.
+Lemma test_exp_1_3: exp 1 3 = 1. Proof. reflexivity. Qed.
 
 (** And here's another example to illustrate [selfCompose]. Make sure you understand
     why its result is 256. *)
@@ -120,7 +162,14 @@ Definition left_inverse {A B : Type} (f : A -> B) (g : B -> A) : Prop :=
 Example plus2minus2:
   left_inverse (fun (x: nat) => x + 2) (fun (x: nat) => x - 2).
 Proof.
-Admitted.
+  intros.
+  unfold left_inverse.
+  unfold fun_equiv.
+  intros.
+  unfold compose.
+  unfold id.
+  lia.
+Qed.
 
 (** On the other hand, note that the other direction does not hold, because
     if a subtraction on natural numbers underflows, it just returns 0, so
@@ -128,7 +177,15 @@ Admitted.
     so it can't have a left inverse. *)
 Example minus2plus2: ~ left_inverse (fun (x: nat) => x - 2) (fun (x: nat) => x + 2).
 Proof.
-Admitted.
+  intros.
+  unfold left_inverse.
+  unfold fun_equiv.
+  unfold compose.
+  unfold id.
+  intros H.
+  specialize (H 0).
+  lia.
+Qed.
 
 (** Let us make the intuition from the previous paragraph more
     concrete, by proving that a function that is not injective
@@ -140,7 +197,18 @@ Lemma left_invertible_injective {A}:
     left_inverse f g ->
     (forall x y, f x = f y -> x = y).
 Proof.
-Admitted.
+  intros.
+  unfold left_inverse in H.
+  unfold fun_equiv in H.
+  unfold compose in H.
+  unfold id in H.
+  assert (G := H).
+  specialize (H x).
+  specialize (G y).
+  rewrite H0 in H.
+  rewrite H in G.
+  apply G.
+Qed.
 
 (** Bonus question: can you prove the reverse;
     i.e., can you prove that all injective functions have left
@@ -151,15 +219,63 @@ Admitted.
     type arguments explicitly, because otherwise Coq would not be able to infer them." *)
 Lemma left_inverse_id: forall A, left_inverse (@id A) (@id A).
 Proof.
-Admitted.
+  intros.
+  unfold id.
+  unfold left_inverse.
+  unfold compose.
+  unfold id.
+  unfold fun_equiv.
+  intros.
+  reflexivity.
+Qed.
 
-(** Now we can start proving interesting facts about inverse functions: *)
-(** Here's how to invert the power function: *)
+Lemma selfComposeAssoc{A: Type}: forall (f: A -> A) (n: nat),
+  f \circ selfCompose f n ~= selfCompose f n \circ f.
+Proof.
+  intros.
+  unfold fun_equiv.
+  unfold compose.
+  intros.
+  induction n.
+  - simpl.
+    unfold id.
+    reflexivity.
+  - simpl.
+    unfold compose.
+    rewrite IHn.
+    reflexivity.
+Qed.
+Print selfComposeAssoc.
+
 Lemma invert_selfCompose{A: Type}: forall (f g: A -> A) (n: nat),
     left_inverse f g ->
     left_inverse (selfCompose f n) (selfCompose g n).
 Proof.
-Admitted.
+  intros.
+  unfold left_inverse.
+  unfold id.
+  unfold fun_equiv.
+  unfold compose.
+  induction n.
+  - intros.
+    simpl.
+    unfold id.
+    reflexivity.
+  - intros.
+    simpl.
+    assert ((f \circ selfCompose f n) ~= (selfCompose f n)\circ f) as G.
+    + apply selfComposeAssoc.
+    + unfold fun_equiv in G.
+      specialize (G x).
+      rewrite G.
+      unfold compose.
+      specialize (IHn (f x)).
+      rewrite IHn.
+      unfold left_inverse in H.
+      unfold compose in H.
+      unfold id in H.
+      apply H.
+Qed.
 
 (** ** Polymorphic container types *)
 
