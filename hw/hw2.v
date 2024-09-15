@@ -308,14 +308,30 @@ Qed.
 Lemma map_is_fold : forall {A B : Type} (f : A -> B) (xs : list A),
     map f xs = fold (fun x ys => cons (f x) ys) nil xs.
 Proof.
-Admitted.
+  intros.
+  induction xs.
+  - unfold map, fold.
+    reflexivity.
+  - assert (map f (a :: xs) = f a :: map f xs).
+    + reflexivity.
+    + assert (fold (fun (x : A) (ys : list B) => f x :: ys) [] (a :: xs) = f a :: fold (fun (x : A) (ys : list B) => f x :: ys) [] (xs)).
+      * reflexivity.
+      * rewrite H, H0, IHxs. reflexivity.
+Qed.
+    
 
 (** Since [fold f z] replaces [cons] with [f] and [nil] with
       [z], [fold cons nil] should be the identity function. *)
 Theorem fold_id : forall {A : Type} (xs : list A),
     fold cons nil xs = xs.
 Proof.
-Admitted.
+  intros.
+  induction xs.
+  - unfold fold. reflexivity.
+  - assert (fold cons [] (a :: xs) = a :: fold cons [] (xs)).
+    + reflexivity.
+    + rewrite H, IHxs. reflexivity.
+Qed.
 
 (** If we apply [fold] to the concatenation of two lists,
       it is the same as folding the "right" list and using
@@ -324,24 +340,33 @@ Theorem fold_append : forall {A : Type} (f : A -> A -> A) (z : A)
                         (xs ys : list A),
     fold f z (xs ++ ys) = fold f (fold f z ys) xs.
 Proof.
-Admitted.
+  intros.
+  induction xs.
+  - simpl. reflexivity.
+  - assert (fold f z ((a :: xs) ++ ys) = f a (fold f z (xs ++ ys))). reflexivity.
+    assert (fold f (fold f z ys) (a :: xs) = f a (fold f (fold f z ys) xs)). reflexivity.
+    rewrite H, H0, IHxs. reflexivity.
+Qed.
 
 (** Using [fold], define a function that computes the
       sum of a list of natural numbers. *)
-Definition sum : list nat -> nat. Admitted.
+Definition sum : list nat -> nat := fun (l : list nat) => fold plus 0 l.
 
 Example sum_example : sum [1; 2; 3] = 6.
 Proof.
-Admitted.
+  unfold sum. simpl. reflexivity.
+Qed.
 
 (** Using [fold], define a function that computes the
       conjunction of a list of Booleans (where the 0-ary
       conjunction is defined as [true]). *)
-Definition all : list bool -> bool. Admitted.
+Definition all : list bool -> bool := fun (l : list bool) => 
+  fold andb true l.
 
 Example all_example : all [true; false; true] = false.
 Proof.
-Admitted.
+  unfold all. simpl. reflexivity.
+Qed.
 
 
 (** The following two theorems, [sum_append] and [all_append],
@@ -351,22 +376,47 @@ Admitted.
 Theorem sum_append : forall (xs ys : list nat),
     sum (xs ++ ys) = sum xs + sum ys.
 Proof.
-Admitted.
+  intros.
+  induction xs.
+  - reflexivity.
+  - assert (sum ((a :: xs) ++ ys) = a + sum (xs ++ ys)). reflexivity.
+    assert (sum (a :: xs) + sum ys = a + sum xs + sum ys). reflexivity.
+    rewrite H, H0, IHxs. simpl. lia.
+Qed.
 
+Lemma andb_assoc : forall b1 b2 b3:bool, (b1 && (b2 && b3)%bool)%bool = (b1 && b2 && b3)%bool.
+Proof.
+  intros.
+  unfold andb.
+  destruct b1.
+  destruct b2.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+Qed.
 
 Theorem all_append : forall (xs ys : list bool),
     all (xs ++ ys) = andb (all xs) (all ys).
 Proof.
-Admitted.
+  intros.
+  induction xs.
+  - reflexivity.
+  - assert (all ((a :: xs) ++ ys) = (a && all (xs ++ ys))%bool). reflexivity.
+    assert ((all (a :: xs) && all ys)%bool = (a && all xs && all ys)%bool). reflexivity.
+    rewrite H, H0, IHxs.
+    apply andb_assoc.
+Qed.
 
 (** Using [fold], define a function that composes a list of functions,
       applying the *last* function in the list *first*. *)
-Definition compose_list {A : Type} : list (A -> A) -> A -> A. Admitted.
+Definition compose_list {A : Type} : list (A -> A) -> A -> A := fun l => fold compose id l.
 
 Example compose_list_example :
   compose_list [fun x => x + 1; fun x => x * 2; fun x => x + 2] 1 = 7.
 Proof.
-Admitted.
+  intros.
+  unfold compose_list, fold, compose. simpl. reflexivity.
+Qed.
 
 (** Show that [sum xs] is the same as converting each number
       in the list [xs] to a function that adds that number,
@@ -379,7 +429,13 @@ Admitted.
 Theorem compose_list_map_add_sum : forall (xs : list nat),
     compose_list (map plus xs) 0 = sum xs.
 Proof.
-Admitted.
+  intros.
+  induction xs.
+  - unfold compose_list, fold, compose, sum. reflexivity.
+  - assert (compose_list (map Init.Nat.add (a :: xs)) 0 = a + compose_list (map Init.Nat.add xs) 0). reflexivity.
+    assert (sum (a :: xs) = a + sum xs). reflexivity.
+    rewrite H, H0, IHxs. reflexivity.
+Qed.
 
 (** In the next few exercices, we will work with binary trees. *)
 
@@ -404,22 +460,63 @@ Fixpoint flatten {A} (t : tree A) : list A :=
     list resulting from the flattening of that same tree.
  *)
 
-Fixpoint mirror {A} (t : tree A) : tree A. Admitted.
+Fixpoint mirror {A} (t : tree A) : tree A :=
+  match t with
+  | Leaf => Leaf
+  | Node l d r => Node (mirror r) d (mirror l)
+  end.
 
 Example mirror_test1 :
   mirror (Node Leaf 1 (Node Leaf 2 (Node Leaf 3 Leaf))) =
     Node (Node (Node Leaf 3 Leaf) 2 Leaf) 1 Leaf.
-Admitted.
+Proof.
+  reflexivity.
+Qed.
 
 Theorem mirror_mirror_id {A} : forall (t : tree A),
     mirror (mirror t) = t.
 Proof.
-Admitted.
+  intros.
+  induction t.
+  - reflexivity.
+  - assert (mirror (mirror (Node t1 d t2)) = Node (mirror (mirror t1)) d (mirror (mirror t2))). reflexivity.
+    rewrite H, IHt1, IHt2. reflexivity.
+Qed.
+
+Lemma list_cons_app_ident {A} : forall (l1 l2 : list A) (v1 v2 : A),
+  l1 ++ v1 :: (l2 ++ [v2]) = (l1 ++ v1 :: l2) ++ [v2].
+Proof.
+  intros.
+  induction l1.
+  - reflexivity.
+  - assert ((a :: l1) ++ v1 :: l2 ++ [v2] = a :: (l1 ++ v1 :: l2 ++ [v2])). reflexivity.
+    assert (((a :: l1) ++ v1 :: l2) ++ [v2] =(a :: (l1 ++ v1 :: l2) ++ [v2])). reflexivity.
+    rewrite H, H0, IHl1. reflexivity.
+Qed.
+
+Lemma rev_ident {A} : forall (l1 l2 : list A) (v : A),
+  rev (l1 ++ v :: l2) = rev l2 ++ v :: rev l1.
+Proof.
+  intros.
+  induction l1.
+  - reflexivity.
+  - assert (rev ((a :: l1) ++ v :: l2) = (rev (l1 ++ v :: l2)) ++ [a]). reflexivity.
+    assert (rev l2 ++ v :: rev (a :: l1) = rev l2 ++ v :: (rev l1 ++ [a])). reflexivity.
+    rewrite H, H0, IHl1, (list_cons_app_ident (rev l2) (rev l1) v a). reflexivity.
+Qed.
 
 Theorem flatten_mirror_rev {A} : forall (t : tree A),
     flatten (mirror t) = rev (flatten t).
 Proof.
-Admitted.
+  intros.
+  induction t.
+  - reflexivity.
+  - assert (flatten (mirror (Node t1 d t2)) = flatten (mirror t2) ++ d :: flatten (mirror t1)). reflexivity.
+    rewrite H, IHt1, IHt2.
+    assert (rev (flatten (Node t1 d t2)) = rev (flatten t2) ++ d :: rev (flatten t1)).
+    + simpl. rewrite (rev_ident (flatten t1) (flatten t2) d). reflexivity.
+    + rewrite H0. reflexivity.
+Qed.
 
 (** Bitwise tries are finite maps keyed by lists of Booleans.
       We will implement a bitwise trie with entries of type [A]
@@ -440,12 +537,21 @@ Definition bitwise_trie A := tree (option A).
       Look at the examples below to get a better sense of what
       this operation does: the argument [k] is a path, in which
       [true] means "go left" and [false] means "go right". *)
-Fixpoint lookup {A} (k : list bool) (t : bitwise_trie A) {struct t} : option A. Admitted.
+Fixpoint lookup {A} (k : list bool) (t : bitwise_trie A) {struct t} : option A :=
+  match (k, t) with
+  | ([], Leaf) => None
+  | ([], Node l d r) => d
+  | (true::ks, Leaf) => None
+  | (true::ks, Node l d r) => lookup ks l
+  | (false::ks, Leaf) => None
+  | (false::ks, Node l d r) => lookup ks r
+  end.
 
 Example lookup_example1 :
   lookup [] (Node Leaf (None : option nat) Leaf) = None.
 Proof.
-Admitted.
+  unfold lookup. reflexivity.
+Qed.
 
 Example lookup_example2 :
   lookup [false; true]
@@ -455,14 +561,22 @@ Example lookup_example2 :
        (Node (Node Leaf (Some 1) Leaf) (Some 3) Leaf))
   = Some 1.
 Proof.
-Admitted.
+  unfold lookup. reflexivity.
+Qed.
 
 (** [Leaf] represents an empty bitwise trie, so a lookup for
       any key should return [None]. *)
 Theorem lookup_empty {A} : forall (k : list bool),
     lookup k (Leaf : bitwise_trie A) = None.
 Proof.
-Admitted.
+  intros.
+  induction k.
+  - reflexivity.
+  - simpl.
+    destruct a.
+    reflexivity.
+    reflexivity.
+Qed.
 
 (** Define an operation to "insert" a key and optional value
       into a bitwise trie. The [insert] definition should satisfy two
@@ -475,23 +589,64 @@ Admitted.
       that entry with the new one being inserted. Note that [insert] can
       be used to remove an entry from the trie, too, by inserting [None]
       as the value. *)
+Fixpoint make_none_trie {A} (k : list bool) (v : option A)
+  : bitwise_trie A :=
+  match k with
+  | [] => Node Leaf v Leaf
+  | true::ks => Node (make_none_trie ks v) None Leaf
+  | false::ks => Node Leaf None (make_none_trie ks v)
+  end.
+
 Fixpoint insert {A} (k : list bool) (v : option A) (t : bitwise_trie A) {struct t}
-  : bitwise_trie A. Admitted.
+  : bitwise_trie A :=
+  match (k, t) with
+  | ([], Leaf) => Node Leaf v Leaf
+  | ([], Node l _ r) => Node l v r
+  | (true::ks, Leaf) => Node (make_none_trie ks v) None Leaf
+  | (true::ks, Node l d r) => Node (insert ks v l) d r
+  | (false::ks, Leaf) => Node Leaf None (make_none_trie ks v)
+  | (false::ks, Node l d r) => Node l d (insert ks v r)
+  end.
 
 Example insert_example1 :
   lookup [] (insert [] None (Node Leaf (Some 0) Leaf)) = None.
 Proof.
-Admitted.
+  reflexivity.
+Qed.
 
 Example insert_example2 :
   lookup [] (insert [true] (Some 2) (Node Leaf (Some 0) Leaf)) = Some 0.
 Proof.
-Admitted.
+  reflexivity.
+Qed.
+
+Lemma lookup_none_trie {A} (k : list bool) (v : option A) :
+  lookup k (make_none_trie k v) = v.
+Proof.
+  induction k.
+  - reflexivity.
+  - destruct a.
+    + simpl. apply IHk.
+    + simpl. apply IHk.
+Qed.
 
 Theorem lookup_insert {A} (k : list bool) (v : option A) (t : bitwise_trie A) :
   lookup k (insert k v t) = v.
 Proof.
-Admitted.
+  revert k.
+  induction t.
+  - induction k.
+    + reflexivity.
+    + destruct a.
+      * apply lookup_none_trie.
+      * apply lookup_none_trie.
+  - intros.
+    induction k.
+    + reflexivity.
+    + destruct a.
+      * apply IHt1.
+      * apply IHt2.
+Qed.
 
 (** The rest of this assignment is optional -- you may skip it if you find that
     you are short on time *)
