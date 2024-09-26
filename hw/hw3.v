@@ -337,9 +337,12 @@ Proof.
   intros.
   induction ss.
   - apply MStar0.
-  - 
-  (* FILL IN HERE *) Admitted.
-(** [] *)
+  - simpl in H.
+    assert (a =~ re). specialize (H a). apply H. auto.
+    assert (forall s : list T, In s ss -> s =~ re). auto.
+    specialize (IHss H1). 
+    apply (MStarApp a (fold (app (A:=T)) ss [])); auto.
+Qed.
 
 (** Since the definition of [exp_match] has a recursive
     structure, we might expect that proofs involving regular
@@ -423,17 +426,69 @@ Qed.
     regular expression matches some string. Prove that your function
     is correct. *)
 
-Fixpoint re_not_empty {T : Type} (re : reg_exp T) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint re_not_empty {T : Type} (re : reg_exp T) : bool :=
+  match re with
+  | EmptySet => false
+  | EmptyStr => true
+  | Char x => true
+  | App re1 re2 => re_not_empty re1 && re_not_empty re2
+  | Union re1 re2 => re_not_empty re1 || re_not_empty re2 
+  | Star re => true
+  end.
 
 Lemma re_not_empty_correct : forall T (re : reg_exp T),
   (exists s, s =~ re) <-> re_not_empty re = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
-(** [] *)
-
-(* ================================================================= *)
-(** ** The [remember] Tactic *)
+  split.
+  - intros.
+    induction re; auto. simpl.
+    + inversion H.
+      inversion H0.
+    + inversion H.
+      inversion H0.
+      assert (exists s : list T, s =~ re1). eauto.
+      assert (exists s : list T, s =~ re2). eauto.
+      specialize (IHre1 H6).
+      specialize (IHre2 H7).
+      simpl. rewrite andb_true_iff.
+      auto.
+    + inversion H.
+      inversion H0; simpl; rewrite orb_true_iff.
+      * left.
+        assert (exists s : list T, s =~ re1). eauto.
+        specialize (IHre1 H5).
+        auto.
+      * right.
+        assert (exists s : list T, s =~ re2). eauto.
+        specialize (IHre2 H5).
+        auto.
+  - intros.
+    induction re.
+    + inversion H.
+    + exists []. apply MEmpty.
+    + exists [t0]. apply MChar.
+    + inversion H.
+      rewrite andb_true_iff in H1.
+      destruct H1.
+      specialize (IHre1 H0).
+      specialize (IHre2 H1).
+      destruct IHre1.
+      destruct IHre2.
+      exists (x ++ x0).
+      apply MApp; auto.
+    + inversion H.
+      rewrite orb_true_iff in H1.
+      inversion H1.
+      * specialize (IHre1 H0).
+        destruct IHre1.
+        exists x.
+        apply MUnionL. auto.
+      * specialize (IHre2 H0).
+        destruct IHre2.
+        exists x.
+        apply MUnionR. auto.
+    + exists []. apply MStar0.
+Qed.
 
 (** One potentially confusing feature of the [induction] tactic is
     that it will let you try to perform an induction over a term that
