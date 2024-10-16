@@ -1,0 +1,19 @@
+Homework 4
+==========
+
+The starter code for this homework assignment is split across several
+Coq source files.
+
+To get started, first build the starter code using the supplied
+`Makefile`:
+
+> make
+
+Then open up `HW4.v` in your favorite Coq IDE (ProofGeneral, VSCode,
+etc.) and follow the instructions.
+
+Note that you'll need to skim the `Map.v` file and will need to read
+the `Lang.v` file in detail. Also, the `Hints.v` file contains several
+hints if you are having trouble making progress on the assignment.
+
+Good luck!
